@@ -1,13 +1,11 @@
 import React from "react";
 import { notFound } from "next/navigation";
-import { IEvent } from "@/database";
-import { getSimilarEventsBySlug } from "@/lib/actions/event.actions";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
 import EventCard from "@/components/EventCard";
-import { cacheLife } from "next/cache";
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+import { cacheLife, cacheTag } from "next/cache";
+import { eventCacheTag } from "@/lib/cache-tags";
+import { getBookingCount, getEventBySlug, getSimilarEvents } from "@/lib/data/events";
 
 const EventDetailItem = ({
   icon,
@@ -51,29 +49,12 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
   cacheLife("hours");
   const slug = await params;
 
-  let event;
-  try {
-    const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
-      next: { revalidate: 60 },
-    });
+  // Only a missing event is a 404; database errors propagate to the error boundary.
+  const event = await getEventBySlug(slug);
+  if (!event) notFound();
 
-    if (!request.ok) {
-      if (request.status === 404) {
-        return notFound();
-      }
-      throw new Error(`Failed to fetch event: ${request.statusText}`);
-    }
-
-    const response = await request.json();
-    event = response.event;
-
-    if (!event) {
-      return notFound();
-    }
-  } catch (error) {
-    console.error("Error fetching event:", error);
-    return notFound();
-  }
+  // Lets createBooking expire this cached page so the booking count stays current.
+  cacheTag(eventCacheTag(event._id));
 
   const {
     description,
@@ -89,11 +70,10 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
     organizer,
   } = event;
 
-  if (!description) return notFound();
-
-  const bookings = 10;
-
-  const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
+  const [bookings, similarEvents] = await Promise.all([
+    getBookingCount(event._id),
+    getSimilarEvents(event),
+  ]);
 
   return (
     <section id="event">
@@ -167,8 +147,8 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
         <h2>Similar Events</h2>
         <div className="events">
           {similarEvents.length > 0 &&
-            similarEvents.map((similarEvent: IEvent) => (
-              <EventCard key={similarEvent.title} {...similarEvent} />
+            similarEvents.map((similarEvent) => (
+              <EventCard key={similarEvent.slug} {...similarEvent} />
             ))}
         </div>
       </div>

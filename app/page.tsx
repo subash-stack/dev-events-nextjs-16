@@ -1,19 +1,18 @@
 import { Suspense } from "react";
 import EventCard from "@/components/EventCard";
 import ExploreBtn from "@/components/ExploreBtn";
-import { IEvent } from "@/database";
+import { getAllEvents } from "@/lib/data/events";
 import { cacheLife } from "next/cache";
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 const EventList = async () => {
   "use cache";
   cacheLife("hours");
-  const response = await fetch(`${BASE_URL}/api/events`);
-  const { events } = await response.json();
+  // Query the database directly: fetching our own API fails during `next build`, when no server is running.
+  const events = await getAllEvents();
   return (
     <ul className="events">
-      {events.map((event: IEvent) => (
-        <li className="list-none" key={event.title}>
+      {events.map((event) => (
+        <li className="list-none" key={event.slug}>
           <EventCard {...event} />
         </li>
       ))}

@@ -6,16 +6,27 @@ import { createBooking } from "@/lib/actions/booking.actions";
 const BookEvent = ({ eventId }: { eventId: string }) => {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Ignore repeat clicks while a request is in flight.
+    if (pending) return;
 
-    const { success } = await createBooking({ eventId, email });
-
-    if (success) {
-      setSubmitted(true);
-    } else {
-      console.error("Booking creation failed");
+    setPending(true);
+    setError(null);
+    try {
+      const result = await createBooking({ eventId, email });
+      if (result.success) {
+        setSubmitted(true);
+      } else {
+        setError(result.message);
+      }
+    } catch {
+      setError("Booking failed. Please try again.");
+    } finally {
+      setPending(false);
     }
   };
 
@@ -33,11 +44,18 @@ const BookEvent = ({ eventId }: { eventId: string }) => {
               onChange={(e) => setEmail(e.target.value)}
               id="email"
               placeholder="Enter your email address"
+              required
             />
           </div>
 
-          <button type="submit" className="button-submit">
-            Submit
+          {error && (
+            <p role="alert" className="text-sm text-red-400">
+              {error}
+            </p>
+          )}
+
+          <button type="submit" className="button-submit" disabled={pending}>
+            {pending ? "Booking..." : "Submit"}
           </button>
         </form>
       )}

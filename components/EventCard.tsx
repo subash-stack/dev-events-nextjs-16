@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { EventItem } from "@/lib/constants";
+import type { EventData } from "@/lib/data/events";
 
-const EventCard = ({ title, image, slug, location, date, time }: EventItem) => {
+type EventCardProps = Pick<EventData, "title" | "image" | "slug" | "location" | "date" | "time">;
+
+const EventCard = ({ title, image, slug, location, date, time }: EventCardProps) => {
   return (
     <Link href={`/events/${slug}`} id="event-card">
       <div className="relative h-75 w-full">

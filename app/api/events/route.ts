@@ -3,6 +3,9 @@ import connectToDatabase from "@/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
 
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 /**
  * Reads an array field sent either as repeated keys (tags=a, tags=b)
  * or as a single JSON array string (tags=["a","b"]).
@@ -47,6 +50,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         message:'Image file is required'
       },{status:400})
+    }
+    // Validate before reading the file into memory or uploading it.
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { message: `Image must be one of: ${ALLOWED_IMAGE_TYPES.join(", ")}` },
+        { status: 400 },
+      );
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      return NextResponse.json(
+        { message: `Image must be ${MAX_IMAGE_BYTES / (1024 * 1024)} MB or smaller` },
+        { status: 400 },
+      );
     }
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

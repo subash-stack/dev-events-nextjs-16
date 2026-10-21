@@ -34,6 +34,9 @@ const BookingSchema = new Schema<IBooking>(
   { timestamps: true }
 );
 
+// One booking per email per event.
+BookingSchema.index({ eventId: 1, email: 1 }, { unique: true });
+
 // Reject bookings for events that don't exist. Skipped when eventId is unchanged
 // to avoid an extra query on every update.
 BookingSchema.pre("save", async function () {
